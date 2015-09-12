@@ -142,15 +142,12 @@ var MAL = function()
 
     // how do we map usernames into urls
     this.userUrl = function(username) {
-        //if( $.hasOwnProperty("mobile") ) {
-        //    return "#profile?user=" + username;
-        //} else {
-            if (username[0] === '*')
-                return "#profile?group=" + username;
-            else
-                return "#profile?user=" + username;
-        //}
-    };
+        if( $.hasOwnProperty("mobile") ) {
+            return "#profile?user=" + username;
+        } else {
+            return "#profile?user=" + username;
+        }
+    }
 
     // recover username from url (only for hash)
     this.urlToUser = function(url) {
@@ -187,13 +184,13 @@ var MAL = function()
         }
     }
 
-    this.dmchatUrl = function (alias) {
-        if ($.hasOwnProperty('mobile')) {
-            return '#dmchat?user=' + alias;
+    this.dmchatUrl = function(username) {
+        if( $.hasOwnProperty("mobile") ) {
+            return "#dmchat?user=" + username;
         } else {
-            return '#directmessages?' + (alias[0] === '*' ? 'group' : 'user') + '=' + alias;
+            return "#directmessages?user=" + username;
         }
-    };
+    }
 
     this.followingUrl = function(username) {
         if( $.hasOwnProperty("mobile") ) {
@@ -278,18 +275,6 @@ var MAL = function()
         }
     }
 
-    this.updateNewGroupDMsUI = function(newDMs) {
-        if( $.hasOwnProperty('mobile') ) {
-        } else {
-            var DMsCounter = $('.userMenu-groupmessages .messages-qtd');
-            if (newDMs) {
-                DMsCounter.text(newDMs).fadeIn();
-            } else {
-                DMsCounter.hide();
-            }
-        }
-    }
-
     this.updateMyOwnPostCount = function(numPosts) {
         if( $.hasOwnProperty("mobile") ) {
             console.log("FIXME: implement MAL_updateMyOwnPostCount");
@@ -342,29 +327,29 @@ var MAL = function()
         }
     }
 
-    this.showDMchat = function(req) {
-        if (req.alias) {
-            if ($.hasOwnProperty('mobile')) {
-                $.mobile.navigate(this.dmchatUrl(req.alias));
+    this.showDMchat = function(username) {
+        if (username) {
+            if( $.hasOwnProperty("mobile") ) {
+                $.mobile.navigate( this.dmchatUrl(username) );
             } else {
-                if ($('.postboard').length) {
-                    window.location.hash = this.dmchatUrl(req.alias);
+                if ($(".postboard").length) {
+                    window.location.hash = this.dmchatUrl(username);
                 } else {
-                    window.location.href = 'home.html'+this.dmchatUrl(req.alias);
+                    window.location.href = 'home.html'+this.dmchatUrl(username);
                 }
             }
         } else {
-            if ($.hasOwnProperty('mobile')) {
-                $.mobile.navigate('#' + (req.group ? '' : 'directmsg'));  // FIXME add group messages to tmobile
+            if( $.hasOwnProperty("mobile") ) {
+                $.mobile.navigate( '#directmsg' );
             } else {
-                if ($('.postboard').length) {
-                    window.location.hash = '#' + (req.group ? 'groupmessages' : 'directmessages');
+                if ($(".postboard").length) {
+                    window.location.hash = '#directmessages';
                 } else {
-                    window.location.href = 'home.html#' + (req.group ? 'groupmessages' : 'directmessages');
+                    window.location.href = 'home.html#directmessages';
                 }
             }
         }
-    };
+    }
 
     this.setNetworkStatusMsg = function(msg, statusGood) {
         if( $.hasOwnProperty("mobile") ) {

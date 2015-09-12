@@ -10,10 +10,9 @@ var _followsPerPage = 200;
 var _maxFollowingPages = 50;
 var _followingSeqNum = 0;
 var _followSuggestions = [];
-var _searchingPartialName = '';
+var _searchingPartialUsers = "";
 var _searchKeypressTimer = undefined;
 var _lastSearchUsersResults = [];
-var _lastSearchUsersResultsRemovedFromDHTgetQueue = true;
 var _lastLoadFromDhtTime = 0;
 
 var twisterFollowingO = undefined;
@@ -579,96 +578,101 @@ function processWhoToFollowSuggestion(suggestion, followedBy) {
         console.warn('nothing to proceed: no twisters to follow was suggested');
 }
 
-function closeSearchDialog(event) {
-    var elemEvent = event ? $(event.target) : this;
-    elemEvent.siblings('.search-results').slideUp('fast');
-    if (!_lastSearchUsersResultsRemovedFromDHTgetQueue) {
-        removeUsersFromDhtgetQueue(_lastSearchUsersResults);
-        _lastSearchUsersResultsRemovedFromDHTgetQueue = true;
-    }
+function closeSearchDialog()
+{
+    $(".userMenu-search-field").siblings().slideUp( "fast" );
+    removeUsersFromDhtgetQueue( _lastSearchUsersResults );
+    _lastSearchUsersResults = [];
 }
 
 function userSearchKeypress(event) {
-    var elemEvent = $(event.target);
-    var partialName = elemEvent.val().toLowerCase();
+    var partialName = $(".userMenu-search-field").val().toLowerCase();
+    var searchResults = $(".search-results");
 
-    if (event.data.hashtags && partialName[0] === '#') {
-        var searchResults = elemEvent.siblings('.search-results');
-        if (searchResults.is(':visible'))
-            searchResults.slideUp('fast');
+    if ( partialName.substr( 0, 1 ) == '#' ) {
+
+        if(searchResults.is(":visible"))
+            searchResults.slideUp( "fast" );
+
+        if ( event.which == 13 )
+            window.location.hash = '#hashtag?hashtag=' + encodeURIComponent(partialName.substr(1));
 
         return;
     }
 
-    var words = partialName.match(/\b\w+/g);
-    if (words && words.length) {
-        partialName = words.pop();
-
-        if (typeof _searchKeypressTimer !== 'undefined')
-            clearTimeout(_searchKeypressTimer);
-
-        if (_searchingPartialName.length) {
-            _searchingPartialName = partialName;
-        } else {
-            _searchKeypressTimer = setTimeout(function () {
-                    _searchKeypressTimer = undefined;
-                    event.data.partialName = partialName;
-                    searchPartialUsername(event);
-                }, 600);
-        }
-    } else
-        closeSearchDialog(event);
-}
-
-function searchPartialUsername(event) {
-    _searchingPartialName = event.data.partialName;
-    twisterRpc('listusernamespartial', [event.data.partialName, 10],
-        function(event, ret) {
-            if (event.data.partialName !== _searchingPartialName)
-                setTimeout(searchPartialUsername, 100, event);
-            else {
-                if (!_lastSearchUsersResultsRemovedFromDHTgetQueue)
-                    removeUsersFromDhtgetQueue(_lastSearchUsersResults);
-                else
-                    _lastSearchUsersResultsRemovedFromDHTgetQueue = false;
-                _lastSearchUsersResults = ret;
-
-                if (ret && ret.length) {
-                    if (event.data.handleRet)
-                        event.data.handleRet(event, ret);
-                } else {
-                    if (event.data.handleRetZero)
-                        event.data.handleRetZero(event);
-                }
-
-                _searchingPartialName = '';
-            }
-        }, event,
-        function(req, ret) {console.warn('ajax error:' + ret.message);}, null
-    );
-}
-
-function processDropdownUserResults(event, results) {
-    var container = $('.userMenu-search-profiles').empty();
-    var template = $('#search-profile-template').children();
-
-    for (var i = 0; i < results.length; i++) {
-        if (results[i] === defaultScreenName)
-            continue;
-
-        var item = template.clone(true);
-        item.find('.mini-profile-info').attr('data-screen-name', results[i]);
-        item.find('.mini-screen-name b').text(results[i]);
-        item.find('a.open-profile-modal').attr('href', $.MAL.userUrl(results[i]));
-        getAvatar(results[i], item.find('.mini-profile-photo'));
-        getFullname(results[i], item.find('.mini-profile-name'));
-        item.appendTo(container);
-
-        if (followingUsers.indexOf(results[i]) !== -1)
-            toggleFollowButton(results[i], true);
+    if ( partialName.substr( 0, 1 ) == '@' ) {
+        partialName = partialName.substr( 1 );
     }
 
-    $.MAL.searchUserListLoaded();
+    //var partialName = item.val();
+
+    if( !partialName.length ) {
+        closeSearchDialog();
+    } else {
+        if( _searchKeypressTimer !== undefined )
+            clearTimeout(_searchKeypressTimer);
+
+        if( _searchingPartialUsers.length ) {
+            _searchingPartialUsers = partialName;
+        } else {
+            _searchKeypressTimer = setTimeout( function() {
+                    _searchKeypressTimer = undefined;
+                    searchPartialUsername(partialName);
+                }, 600);
+        }
+    }
+}
+
+function searchPartialUsername(partialName) {
+    _searchingPartialUsers = partialName;
+    twisterRpc("listusernamespartial", [partialName,10],
+               function(partialName, ret) {
+                   processDropdownUserResults(partialName, ret)
+               }, partialName,
+               function(cbArg, ret) {
+                   console.log("ajax error:" + ret);
+               }, {});
+}
+
+function processDropdownUserResults(partialName, results){
+
+    if( partialName != _searchingPartialUsers ) {
+        searchPartialUsername( _searchingPartialUsers );
+        return;
+    }
+
+    removeUsersFromDhtgetQueue( _lastSearchUsersResults );
+    _lastSearchUsersResults = results;
+
+    var typeaheadAccounts = $(".userMenu-search-profiles");
+    var template = $("#search-profile-template").detach();
+
+    typeaheadAccounts.empty();
+    typeaheadAccounts.append(template);
+
+    if( results.length ) {
+        for( var i = 0; i < results.length; i++ ) {
+            if( results[i] == defaultScreenName )
+                continue;
+
+            var resItem = template.clone(true);
+            resItem.removeAttr('id');
+            resItem.show();
+            resItem.find(".mini-profile-info").attr("data-screen-name", results[i]);
+            resItem.find(".mini-screen-name b").text(results[i]);
+            resItem.find("a.open-profile-modal").attr("href",$.MAL.userUrl(results[i]));
+            getAvatar(results[i],resItem.find(".mini-profile-photo"));
+            getFullname(results[i],resItem.find(".mini-profile-name"));
+            resItem.appendTo(typeaheadAccounts);
+            if (followingUsers.indexOf(results[i]) >= 0)
+                toggleFollowButton(results[i], true);
+        }
+
+        $.MAL.searchUserListLoaded();
+    } else {
+        closeSearchDialog();
+    }
+    _searchingPartialUsers = "";
 }
 
 function userClickFollow(e) {
@@ -696,31 +700,20 @@ function userClickFollow(e) {
 }
 
 function initUserSearch() {
-    var elem = $('.userMenu-search-field')
-        .on('click input',
-            {hashtags: true, handleRet: processDropdownUserResults,
-                handleRetZero: closeSearchDialog}, userSearchKeypress)
-        .on('keyup', userSearchEnter)
-    ;
-    $('.userMenu-search').clickoutside(closeSearchDialog.bind(elem));
+    var $userSearchField = $( ".userMenu-search-field" );
+    $userSearchField.keyup( userSearchKeypress );
+    $userSearchField.bind( "click", userSearchKeypress );
+    $(".userMenu-search").clickoutside( closeSearchDialog );
 
     // following stuff should be moved to special function
     $('button.follow').on('click', userClickFollow);
     $('.following-config-method-buttons .public-following')
         .on('click', function(e) {
             setFollowingMethod(e);
-            closePrompt();
+            closeModalHandler('.prompt-wrapper');
             window.setTimeout(loadModalFromHash, 500);  // delay reload so dhtput may do it's job
         })
     ;
-}
-
-function userSearchEnter(event) {
-    if (event.which === 13) {
-        var str = $(event.target).val().toLowerCase().trim();
-        if (str[0] === '#')
-            window.location.hash = '#hashtag?hashtag=' + encodeURIComponent(str.slice(1));
-    }
 }
 
 function followingListPublicCheckbox(e) {

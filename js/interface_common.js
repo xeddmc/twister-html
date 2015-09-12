@@ -55,54 +55,10 @@ function closeModal() {
     });
 }
 
-function closePrompt() {
-    closeModalHandler('.prompt-wrapper');
-}
-
 function closeModalHandler(classBase) {
     var modalWindows = $(classBase+':not(#templates *)');
 
     modalWindows.fadeOut('fast', function() {modalWindows.remove();});
-}
-
-function confirmPopup(event, req) {
-    event.stopPropagation();
-
-    var modal = openModal({
-        classBase: '.prompt-wrapper',
-        classAdd: 'confirm-popup',
-        content: $('#confirm-popup-template').children().clone(true),
-        title: req.titleTxt
-    });
-
-    if (req.messageTxt)
-        modal.content.find('.message').text(req.messageTxt);
-
-    var btn = modal.content.find('.confirm');
-    if (req.confirmTxt)
-        btn.text(req.confirmTxt);
-    else
-        btn.text(polyglot.t('Confirm'));
-    if (req.confirmFunc) {
-        btn.on('click', function () {
-            closePrompt();
-            req.confirmFunc(req.confirmFuncArgs);
-        });
-    } else
-        btn.on('click', closePrompt);
-
-    var btn = modal.content.find('.cancel');
-    if (req.cancelTxt)
-        btn.text(req.cancelTxt);
-    else
-        btn.text(polyglot.t('Cancel'));
-    if (req.cancelFunc) {
-        btn.on('click', function () {
-            closePrompt();
-            req.cancelFunc(req.cancelFuncArgs);
-        });
-    } else
-        btn.on('click', closePrompt);
 }
 
 function checkNetworkStatusAndAskRedirect(cbFunc, cbArg) {
@@ -142,43 +98,7 @@ function timeSincePost(t) {
     return polyglot.t('time_ago', {time: expression});
 }
 
-function openGroupProfileModalWithNameHandler(groupAlias) {
-    var modal = openModal({
-        classAdd: 'profile-modal',
-        content: $('#group-profile-modal-template').children().clone(true),
-        title: polyglot.t('users_profile', {username: '<span>' + groupAlias + '</span>'})
-    });
-
-    modal.content.find('.profile-card').attr('data-screen-name', groupAlias);
-
-    groupMsgGetGroupInfo(groupAlias,
-        function(req, ret) {
-            if (ret) {
-                req.modal.content.find('.profile-bio').text(ret.description);
-
-                if (ret.members.indexOf(defaultScreenName) !== -1)
-                    req.modal.content.find('.group-messages-control').children('button').attr('disabled', false);
-
-                var membersList = req.modal.content.find('.members');
-                var memberTemplate = $('#group-profile-member-template').children();
-                for (var i = 0; i < ret.members.length; i++) {
-                    var item = memberTemplate.clone(true).appendTo(membersList);
-
-                    item.find('.twister-user-info').attr('data-screen-name', ret.members[i]);
-                    item.find('.twister-user-name').attr('href', $.MAL.userUrl(ret.members[i]));
-
-                    getAvatar(ret.members[i], item.find('.twister-user-photo'));
-                    getFullname(ret.members[i], item.find('.twister-user-full'));
-                    getBio(ret.members[i], item.find('.bio'));
-                }
-            }
-        }, {modal: modal}
-    );
-
-
-}
-
-function openUserProfileModalWithNameHandler(username) {
+function openProfileModalWithUsernameHandler(username) {
     var content = $('#profile-modal-template').children().clone(true);
 
     updateProfileData(content, username);
@@ -413,26 +333,18 @@ function loadModalFromHash() {
     var hashdata = hashstring.split(':');
 
     if (hashdata[0] !== '#web+twister')
-        hashdata = hashstring.match(/(hashtag|profile|mentions|directmessages|following|conversation)\?(?:group|user|hashtag|post)=(.+)/);  // need to rework hash scheme to use group|user|hashtag|post or drop it
+        hashdata = hashstring.match(/(hashtag|profile|mentions|directmessages|following|conversation)\?(?:user|hashtag|post)=(.+)/);
 
     if (hashdata && hashdata[1] !== undefined && hashdata[2] !== undefined) {
         if (hashdata[1] === 'profile')
-            if (hashdata[2][0] === '*')
-                openGroupProfileModalWithNameHandler(hashdata[2]);
-            else
-                openUserProfileModalWithNameHandler(hashdata[2]);
-
+            openProfileModalWithUsernameHandler(hashdata[2]);
         else if (hashdata[1] === 'hashtag')
             openHashtagModalFromSearchHandler(hashdata[2]);
         else if (hashdata[1] === 'mentions')
             openMentionsModalHandler(hashdata[2]);
-        else if (hashdata[1] === 'directmessages') {
-            if (hashdata[2][0] === '*')
-                openGroupMessagesModal(hashdata[2]);
-            else
-                openDmWithUserModal(hashdata[2]);
-
-        } else if (hashdata[1] === 'following')
+        else if (hashdata[1] === 'directmessages')
+            openDmWithUserModal(hashdata[2]);
+        else if (hashdata[1] === 'following')
             openFollowingModal(hashdata[2]);
         else if (hashdata[1] === 'conversation') {
             splithashdata2 = hashdata[2].split(':');
@@ -440,12 +352,6 @@ function loadModalFromHash() {
         }
     } else if (hashstring === '#directmessages')
         directMessagesPopup();
-    else if (hashstring === '#groupmessages')
-        openGroupMessagesModal();
-    else if (hashstring === '#groupmessages+newgroup')
-        openGroupMessagesNewGroupModal();
-    else if (hashstring === '#groupmessages+joingroup')
-        openGroupMessagesJoinGroupModal();
     else if (hashstring === '#whotofollow')
         openWhoToFollowModal();
 }
@@ -721,7 +627,7 @@ function posPostPreview(event) {
     if (textArea[0].value.length)
         postPreview.html(htmlFormatMsg(textArea[0].value).html).show();
     else
-        postPreview.hide();
+        postPreview.slideUp('fast');
     textArea.before(postPreview);
 }
 
@@ -800,7 +706,7 @@ function replyTextInput(event) {
                             $(tas[i]).caret(caretPos);
                             replyTextUpdateRemaining(tas[i]);
                             if ($.fn.textcomplete)
-                                setTextcompleteOnElement(tas[i], getMentionsForAutoComplete());
+                                setTextcompleteOnElement(tas[i]);
                         }
                     }
                 } else if (tas.length > 1 && tas[i].value.length === 0) {
@@ -1411,7 +1317,7 @@ function postSubmit(e, oldLastPostId) {
     }
 
     if (btnPostSubmit.parents('.prompt-wrapper').length)
-        closePrompt();
+        closeModalHandler('.prompt-wrapper');
     else {
         textArea.val('').attr('placeholder', polyglot.t('Your message was sent!'));
         var tweetForm = btnPostSubmit.parents('form');
@@ -1432,7 +1338,7 @@ function retweetSubmit(e) {
 
     newRtMsg($(this).closest('.prompt-wrapper').find('.post-data'));
 
-    closePrompt();
+    closeModalHandler('.prompt-wrapper');
 }
 
 function changeStyle() {
@@ -1503,7 +1409,7 @@ function replaceDashboards() {
 }
 
 function initInterfaceCommon() {
-    $('.modal-close, .modal-blackout').not('.prompt-close').on('click', function() {
+    $('.cancel').on('click', function() {
         if ($('.modal-content').attr('style') != undefined)
             $('.modal-content').removeAttr('style');
         $('.modal-back').css('display', 'none');
@@ -1513,7 +1419,10 @@ function initInterfaceCommon() {
 
     $('.modal-back').on('click', function() {history.back();});
 
-    $('.prompt-close').on('click', closePrompt);
+    $('.prompt-close').on('click', function(e) {
+        e.stopPropagation();
+        closeModalHandler('.prompt-wrapper');
+    });
 
     /*
     $('.modal-back').on('click', function() {
@@ -1571,10 +1480,10 @@ function initInterfaceCommon() {
     $('.bitmessage-ctc').on('click', promptCopyAttrData);
 
     if ($.fn.textcomplete) {
-        $('.post-area-new textarea')
-            .on('focus', {req: getMentionsForAutoComplete}, setTextcompleteOnEventTarget)
-            .on('focusout', unsetTextcompleteOnEventTarget)
-        ;
+        $('textarea').on({
+            'focus': setTextcompleteOnEventTarget,
+            'focusout': function () {$(this).textcomplete('destroy');}
+        });
     }
 }
 
@@ -1590,28 +1499,17 @@ function killInterfaceModule(module) {
     $('.module.'+module).empty().hide();
 }
 
-function inputEnterActivator(event) {
-    var elemEvent = $(event.target);
-    elemEvent.parents(event.data.parentSelector).find(event.data.enterSelector)
-        .attr('disabled', elemEvent.val().trim() === '');
-}
-
 function setTextcompleteOnEventTarget(event) {
     // cursor has not set yet and we need to wait 100ms to skip global click event
-    setTimeout(setTextcompleteOnElement, 100, event.target,
-        typeof event.data.req === 'function' ? event.data.req() : event.data.req);
+    setTimeout(setTextcompleteOnElement, 100, event.target);
 }
 
-function setTextcompleteOnElement(elem, req) {
+function setTextcompleteOnElement(elem) {
     elem = $(elem);
-    elem.textcomplete(req, {
+    elem.textcomplete(getMentionsForAutoComplete(), {
         appendTo: (elem.parents('.dashboard').length) ? elem.parent() : $('body'),
         listPosition: setTextcompleteDropdownListPos
     });
-}
-
-function unsetTextcompleteOnEventTarget(event) {
-    $(event.target).textcomplete('destroy');
 }
 
 // following workaround function is for calls from $.fn.textcomplete only

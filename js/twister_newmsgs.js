@@ -117,25 +117,8 @@ function requestMentionsCount() {
         if (newDMs) {
             $.MAL.soundNotifyDM();
 
-            if ($.Options.showDesktopNotifDMs.val === 'enable') {
-                $.MAL.showDesktopNotif(false,
-                    polyglot.t('You got') + ' ' + polyglot.t('new_direct_messages', newDMs) + '.',
-                    false, 'twister_notification_new_DMs', $.Options.showDesktopNotifDMsTimer.val,
-                    function () {$.MAL.showDMchat();}, false
-                );
-            }
-        }
-        var newDMs = getNewGroupDMsCount();
-        if (newDMs) {
-            $.MAL.soundNotifyDM();
-
-            if ($.Options.showDesktopNotifDMs.val === 'enable') {
-                $.MAL.showDesktopNotif(false,
-                    polyglot.t('You got') + ' ' + polyglot.t('new_group_messages', newDMs) + '.',
-                    false, 'twister_notification_new_DMs', $.Options.showDesktopNotifDMsTimer.val,
-                    function () {$.MAL.showDMchat({group: true});}, false
-                );
-            }
+            if ($.Options.showDesktopNotifDMs.val === 'enable')
+                $.MAL.showDesktopNotif(false, polyglot.t('You got')+' '+polyglot.t('new_direct_messages', newDMs)+'.', false, 'twister_notification_new_DMs', $.Options.showDesktopNotifDMsTimer.val, function(){$.MAL.showDMchat()}, false)
         }
     }
 }
@@ -214,7 +197,6 @@ function requestDMsCount() {
             if (_newDMsUpdated) {
                 saveDMsToStorage();
                 $.MAL.updateNewDMsUI(getNewDMsCount());
-                $.MAL.updateNewGroupDMsUI(getNewGroupDMsCount());
             }
         }, null,
         function(req, ret) {console.warn('ajax error:' + ret);}, null
@@ -225,18 +207,7 @@ function getNewDMsCount() {
     var newDMs = 0;
 
     for (var user in _newDMsPerUser) {
-        if (user[0] !== '*' && _newDMsPerUser[user])
-            newDMs += _newDMsPerUser[user];
-    }
-
-    return newDMs;
-}
-
-function getNewGroupDMsCount() {
-    var newDMs = 0;
-
-    for (var user in _newDMsPerUser) {
-        if (user[0] === '*' && _newDMsPerUser[user])
+        if (_newDMsPerUser[user])
             newDMs += _newDMsPerUser[user];
     }
 
@@ -249,7 +220,6 @@ function resetNewDMsCountForUser(user, lastId) {
 
     saveDMsToStorage();
     $.MAL.updateNewDMsUI(getNewDMsCount());
-    $.MAL.updateNewGroupDMsUI(getNewGroupDMsCount());
 }
 
 function updateGroupList() {
@@ -262,7 +232,6 @@ function updateGroupList() {
 function initDMsCount() {
     loadDMsFromStorage();
     $.MAL.updateNewDMsUI(getNewDMsCount());
-    $.MAL.updateNewGroupDMsUI(getNewGroupDMsCount());
     //quick hack to obtain list of group chat aliases
     updateGroupList();
     setInterval(updateGroupList, 60000);

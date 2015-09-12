@@ -432,13 +432,9 @@ function installCreateUserClick() {
 }
 
 function installUserSearchHandler() {
-    $('.userMenu-search-field')
-        .off('click input')
-        .on('keyup', userSearchEnter)
-        .on('click keyup',
-            {hashtags: true, handleRet: processDropdownUserResults,
-                handleRetZero: closeSearchDialog}, userSearchKeypress)
-    ;
+    var $userSearchField = $( ".userMenu-search-field" );
+    $userSearchField.unbind('keyup').keyup( userSearchKeypress );
+    $userSearchField.unbind('click').bind( "click", userSearchKeypress );
 }
 
 function installProfileEditHandlers() {
